@@ -1,5 +1,5 @@
-# MCV - Mobile Construction Vehicle
-A dev kit to launch your AI-NFT easily on Eliza, like the MCV(Mobile Construction Vehicle) in Red Alert(a popular game).
+# MCV
+A portable and powerful dev kit to launch your AI-NFT easily on Eliza, like the MCV(Mobile Construction Vehicle) in Red Alert(a popular game).
 
 # Features
 - Package AI-NFT [metadata](https://docs.xnomad.ai/ai-nft-metadata) using Eliza’s character files.
