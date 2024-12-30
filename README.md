@@ -3,10 +3,10 @@ An out-of-box dev kit to launch your AI-NFT based on [Eliza](https://github.com/
 
 # Features
 - Package AI-NFT [metadata](https://docs.xnomad.ai/ai-nft-metadata) using Eliza’s character files.
-- Support batch packaging of multiple character files in a directory following a specific naming convention.
-- Enable rapid conversion of NFT traits into standardized prompts and integration into character files.
-- Provide basic functionalities such as Deploy, Mint and Burn(set it free) AI-NFT
-- Support deployment and management on multichain.
+- Enable conversion of NFT traits into personalities and integration into character files.
+- Provide basic functionalities such as Deploy, Mint and Burn(set it free) AI-NFT.
+- Support contract-level AI-NFT management on multichain.
+- Enable AI Agents to launch AI-NFT.
 
 # Supported Blockchain
 - Solana
