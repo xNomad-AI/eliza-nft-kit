@@ -2,12 +2,23 @@ import {
   createNft,
   mplTokenMetadata,
 } from '@metaplex-foundation/mpl-token-metadata';
-import { generateSigner, percentAmount } from '@metaplex-foundation/umi';
+import {
+  generateSigner,
+  KeypairSigner,
+  percentAmount,
+} from '@metaplex-foundation/umi';
 import { createUmi } from '@metaplex-foundation/umi-bundle-defaults';
 import { NftMetadata } from '../types';
 
 interface CreateAiNftParams {
   metadata: NftMetadata;
+  sellerFeePercent: number; // e.g. 5.5 for 5.5%
+  collection: KeypairSigner;
+  isCollection?: boolean;
+}
+
+export async function createAiNftCollection(params: CreateAiNftParams) {
+  await createAiNft({ ...params, isCollection: true });
 }
 
 export async function createAiNft(params: CreateAiNftParams) {
@@ -22,7 +33,13 @@ export async function createAiNft(params: CreateAiNftParams) {
     mint,
     name: params.metadata.name,
     uri,
-    sellerFeeBasisPoints: percentAmount(5.5),
+    collection: params.isCollection
+      ? undefined
+      : {
+          key: params.collection.publicKey,
+          verified: true,
+        },
+    sellerFeeBasisPoints: percentAmount(params.sellerFeePercent),
   }).sendAndConfirm(umi);
 
   return res;
