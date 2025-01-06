@@ -1,46 +1,129 @@
+import { S3Client } from '@aws-sdk/client-s3';
 import {
-  createNft,
-  mplTokenMetadata,
-} from '@metaplex-foundation/mpl-token-metadata';
+  create,
+  createCollection,
+  fetchCollection,
+  mplCore,
+  ruleSet,
+} from '@metaplex-foundation/mpl-core';
 import {
-  generateSigner,
-  KeypairSigner,
-  percentAmount,
+  createSignerFromKeypair,
+  publicKey,
+  TransactionBuilderSendAndConfirmOptions,
+  Umi,
 } from '@metaplex-foundation/umi';
 import { createUmi } from '@metaplex-foundation/umi-bundle-defaults';
-import { NftMetadata } from '../types';
+import { awsUploader } from '@metaplex-foundation/umi-uploader-aws';
+import { Keypair, PublicKey } from '@solana/web3.js';
 
-interface CreateAiNftParams {
-  metadata: NftMetadata;
-  sellerFeePercent: number; // e.g. 5.5 for 5.5%
-  collection: KeypairSigner;
-  isCollection?: boolean;
-}
+export class NftTool {
+  private umi: Umi;
+  private sendAndConfirmOptions: TransactionBuilderSendAndConfirmOptions;
 
-export async function createAiNftCollection(params: CreateAiNftParams) {
-  await createAiNft({ ...params, isCollection: true });
-}
+  constructor(private endpoint: string, private keypair: Keypair) {
+    this.umi = createUmi(endpoint).use(mplCore());
+    this.sendAndConfirmOptions = {
+      confirm: { commitment: 'confirmed' },
+    };
+  }
 
-export async function createAiNft(params: CreateAiNftParams) {
-  // TODO: endpoint
-  const umi = createUmi('http://127.0.0.1:8899').use(mplTokenMetadata());
-
-  const uri = await umi.uploader.uploadJson(params.metadata);
-
-  const mint = generateSigner(umi);
-
-  const res = await createNft(umi, {
-    mint,
-    name: params.metadata.name,
+  async createCollection({
+    collection = Keypair.generate(),
+    name,
     uri,
-    collection: params.isCollection
-      ? undefined
-      : {
-          key: params.collection.publicKey,
-          verified: true,
-        },
-    sellerFeeBasisPoints: percentAmount(params.sellerFeePercent),
-  }).sendAndConfirm(umi);
+    royaltyBps,
+  }: {
+    collection?: Keypair;
+    name: string;
+    uri: string;
+    royaltyBps?: number;
+  }): Promise<{ collection: string }> {
+    const collectionSigner = createSignerFromKeypair(this.umi, {
+      secretKey: collection.secretKey,
+      publicKey: publicKey(collection.publicKey),
+    });
 
-  return res;
+    const result = await createCollection(this.umi, {
+      collection: collectionSigner,
+      name,
+      uri,
+      plugins: royaltyBps
+        ? [
+            {
+              type: 'Royalties',
+              basisPoints: royaltyBps,
+              creators: [
+                {
+                  address: publicKey(this.keypair.publicKey),
+                  percentage: 100,
+                },
+              ],
+              ruleSet: ruleSet('None'),
+            },
+          ]
+        : undefined,
+    }).sendAndConfirm(this.umi, this.sendAndConfirmOptions);
+
+    return {
+      collection: collectionSigner.publicKey.toString(),
+    };
+  }
+
+  async createNft({
+    name,
+    uri,
+    asset = Keypair.generate(),
+    collectionAddress,
+  }: {
+    name: string;
+    uri: string;
+    asset?: Keypair;
+    collectionAddress: PublicKey;
+  }): Promise<{ asset: string }> {
+    const assetSigner = createSignerFromKeypair(this.umi, {
+      secretKey: asset.secretKey,
+      publicKey: publicKey(asset.publicKey),
+    });
+
+    const collection = await fetchCollection(
+      this.umi,
+      publicKey(collectionAddress),
+    );
+
+    const result = await create(this.umi, {
+      asset: assetSigner,
+      name,
+      uri,
+      collection,
+    }).sendAndConfirm(this.umi, this.sendAndConfirmOptions);
+
+    return {
+      asset: assetSigner.publicKey.toString(),
+    };
+  }
+
+  async uploadJsonToS3(
+    json: object,
+    s3Config: {
+      bucket: string;
+      accessKeyId: string;
+      secretAccessKey: string;
+      region: string;
+    },
+  ): Promise<string> {
+    this.umi.use(
+      awsUploader(
+        new S3Client({
+          credentials: {
+            accessKeyId: s3Config.accessKeyId,
+            secretAccessKey: s3Config.secretAccessKey,
+          },
+          region: s3Config.region,
+        }),
+        s3Config.bucket,
+      ),
+    );
+    const url = await this.umi.uploader.uploadJson(json);
+    return url;
+  }
 }
