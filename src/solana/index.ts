@@ -7,9 +7,19 @@ import {
   ruleSet,
 } from '@metaplex-foundation/mpl-core';
 import {
+  addConfigLines,
+  create as createCandyMachine,
+  MAX_NAME_LENGTH,
+  MAX_URI_LENGTH,
+  mplCandyMachine,
+} from '@metaplex-foundation/mpl-core-candy-machine';
+import {
   createSignerFromKeypair,
+  dateTime,
   keypairIdentity,
+  lamports,
   publicKey,
+  some,
   TransactionBuilderSendAndConfirmOptions,
   Umi,
 } from '@metaplex-foundation/umi';
@@ -20,6 +30,7 @@ import {
 } from '@metaplex-foundation/umi-signer-wallet-adapters';
 import { awsUploader } from '@metaplex-foundation/umi-uploader-aws';
 import { Keypair, PublicKey } from '@solana/web3.js';
+import { MintStage } from '../types';
 
 export class NftTool {
   private umi: Umi;
@@ -29,25 +40,30 @@ export class NftTool {
     endpoint: string,
     keypairOrWalletAdapter: Keypair | WalletAdapter,
   ) {
-    if (keypairOrWalletAdapter instanceof Keypair) {
-      this.umi = createUmi(endpoint)
-        .use(mplCore())
-        .use(
-          keypairIdentity({
-            secretKey: keypairOrWalletAdapter.secretKey,
-            publicKey: publicKey(keypairOrWalletAdapter.publicKey),
-          }),
-        );
-    } else {
-      this.umi = createUmi(endpoint)
-        .use(mplCore())
-        .use(walletAdapterIdentity(keypairOrWalletAdapter));
-    }
+    this.umi = createUmi(endpoint)
+      .use(mplCore())
+      .use(mplCandyMachine())
+      .use(
+        keypairOrWalletAdapter instanceof Keypair
+          ? keypairIdentity({
+              secretKey: keypairOrWalletAdapter.secretKey,
+              publicKey: publicKey(keypairOrWalletAdapter.publicKey),
+            })
+          : walletAdapterIdentity(keypairOrWalletAdapter),
+      );
     this.sendAndConfirmOptions = {
       confirm: { commitment: 'confirmed' },
     };
   }
 
+  /**
+   * Create a collection
+   * @param collection - The collection keypair
+   * @param name - The name of the collection
+   * @param uri - The URI of the collection
+   * @param royaltyBps - The royalty basis points
+   * @returns The collection address
+   */
   async createCollection({
     collection = Keypair.generate(),
     name,
@@ -90,6 +106,100 @@ export class NftTool {
     };
   }
 
+  /**
+   * Setup a collection, creating a candy machine.
+   * @param collectionAddress - The collection address
+   * @param candyMachine - The candy machine keypair
+   * @param itemsCount - The number of items in the candy machine
+   * @param mintStages - The mint stages
+   * @returns The candy machine address
+   */
+  async setupCollection({
+    collectionAddress,
+    candyMachine = Keypair.generate(),
+    itemsCount,
+    mintStages,
+  }: {
+    collectionAddress: PublicKey | string;
+    candyMachine?: Keypair;
+    itemsCount: number;
+    mintStages?: MintStage[];
+  }) {
+    const candyMachineSigner = createSignerFromKeypair(this.umi, {
+      secretKey: candyMachine.secretKey,
+      publicKey: publicKey(candyMachine.publicKey),
+    });
+
+    const createIx = await createCandyMachine(this.umi, {
+      candyMachine: candyMachineSigner,
+      collection: publicKey(collectionAddress),
+      collectionUpdateAuthority: this.umi.identity,
+      itemsAvailable: itemsCount,
+      configLineSettings: {
+        prefixName: '',
+        nameLength: MAX_NAME_LENGTH,
+        prefixUri: '',
+        uriLength: MAX_URI_LENGTH,
+        isSequential: true,
+      },
+      groups: mintStages?.length
+        ? mintStages.map((stage, index) => ({
+            label: stage.label,
+            guards: {
+              startDate: some({ date: dateTime(stage.startDate) }),
+              endDate: stage.endDate && some({ date: dateTime(stage.endDate) }),
+              solPayment: some({
+                lamports: lamports(stage.priceInSol),
+                destination: this.umi.identity.publicKey,
+              }),
+              mintLimit:
+                stage.maxMintsPerWallet !== undefined
+                  ? some({ id: index, limit: stage.maxMintsPerWallet })
+                  : undefined,
+            },
+          }))
+        : undefined,
+    });
+    await createIx.sendAndConfirm(this.umi, this.sendAndConfirmOptions);
+
+    return {
+      candyMachine: candyMachineSigner.publicKey.toString(),
+    };
+  }
+
+  /**
+   * Prepare collection items to be minted
+   * @param candyMachine - The candy machine address
+   * @param index - The index the first items will be loaded at
+   * @param items - The items to be loaded
+   * @returns The result of the transaction
+   */
+  async prepareCollectionItems({
+    candyMachine,
+    index,
+    items,
+  }: {
+    candyMachine: PublicKey | string;
+    index?: number;
+    items: { name: string; uri: string }[];
+  }) {
+    const result = await addConfigLines(this.umi, {
+      candyMachine: publicKey(candyMachine),
+      index: 0,
+      configLines: items.map((item) => ({ name: item.name, uri: item.uri })),
+    }).sendAndConfirm(this.umi, this.sendAndConfirmOptions);
+
+    return result;
+  }
+
+  /**
+   * Create an NFT
+   * @param name - The name of the NFT
+   * @param uri - The URI of the NFT
+   * @param asset - The asset keypair
+   * @param collectionAddress - The collection address
+   * @returns The asset address
+   */
   async createNft({
     name,
     uri,
@@ -99,7 +209,7 @@ export class NftTool {
     name: string;
     uri: string;
     asset?: Keypair;
-    collectionAddress: PublicKey;
+    collectionAddress: PublicKey | string;
   }): Promise<{ asset: string }> {
     const assetSigner = createSignerFromKeypair(this.umi, {
       secretKey: asset.secretKey,
@@ -123,6 +233,16 @@ export class NftTool {
     };
   }
 
+  /**
+   * Upload a JSON object to S3
+   * @param json - The JSON object to upload
+   * @param s3Config - The S3 configuration
+   * @param s3Config.bucket - The S3 bucket
+   * @param s3Config.accessKeyId - The S3 access key ID
+   * @param s3Config.secretAccessKey - The S3 secret access key
+   * @param s3Config.region - The S3 region
+   * @returns The URL of the uploaded JSON
+   */
   async uploadJsonToS3(
     json: object,
     s3Config: {
