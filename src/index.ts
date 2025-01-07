@@ -1,8 +1,8 @@
 import { Character, validateCharacterConfig } from '@ai16z/eliza';
-import { AiAgentEngine, AiNftMetadata, NftMetadata } from './types';
+import { AiAgentEngine, AiNftMetadata, NftMetadata } from './types.js';
 
-export * from './solana';
-export * from './types';
+export * from './solana/index.js';
+export * from './types.js';
 
 /**
  * Constructs the AI-NFT metadata.
