@@ -25,32 +25,39 @@ npm install @xnomad/mcv
 
 ## Usage
 
-Create a collection on Solana.
+Create a collection on Solana:
 
 ```typescript
+// Initialize NFT tool with Solana network endpoint and keypair
 const nftTool = new NftTool('https://api.mainnet-beta.solana.com', keypair);
+
+// Create NFT collection
 const { collection } = await nftTool.createCollection({
-  name: 'example',
-  uri: 'https://example.com',
-  royaltyBps: 100,
+  name: 'example', // Collection name
+  uri: 'https://example.com', // Collection metadata URI
+  royaltyBps: 100, // Royalty basis points, 100 = 1%
 });
 
+// Setup Candy Machine configuration
 const { candyMachine } = await nftTool.setupCollection({
-  collectionAddress: collection,
-  itemsCount: 3,
+  collectionAddress: collection, // Collection address
+  itemsCount: 3, // Total number of NFTs
   mintStages: [
+    // Mint phase configuration
     {
-      label: '1',
-      priceInSol: 0.01,
-      startDate: new Date(),
+      label: '1', // Phase label
+      priceInSol: 0.01, // Mint price in SOL
+      startDate: new Date(), // Start time
     },
   ],
 });
 
+// Prepare NFT items in the collection
 await nftTool.prepareCollectionItems({
-  candyMachine,
-  index: 0,
+  candyMachine, // Candy Machine instance
+  index: 0, // Starting index
   items: [
+    // List of NFT items
     { name: 'example #1', uri: 'https://example.com/1.json' },
     { name: 'example #2', uri: 'https://example.com/2.json' },
     { name: 'example #3', uri: 'https://example.com/3.json' },
@@ -58,16 +65,18 @@ await nftTool.prepareCollectionItems({
 });
 ```
 
-Upload metadata json to S3.
+Upload metadata to S3:
 
 ```typescript
+// Upload JSON metadata to AWS S3
 const url = await nftTool.uploadJsonToS3({
-  json: metadata,
+  json: metadata, // Metadata object
   s3Config: {
-    bucket: 'bucket',
-    accessKeyId: 'accessKeyId',
-    secretAccessKey: 'secretAccessKey',
-    region: 'region',
+    // S3 configuration
+    bucket: 'bucket', // Bucket name
+    accessKeyId: 'accessKeyId', // AWS access key ID
+    secretAccessKey: 'secretAccessKey', // AWS secret key
+    region: 'region', // AWS region
   },
 });
 ```
