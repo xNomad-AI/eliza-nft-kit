@@ -17,4 +17,12 @@ An out-of-box dev kit to launch your AI-NFT based on [Eliza](https://github.com/
 
 # Quick Start
 
+## Install
+
+```
+npm install @xnomad/mcv
+```
+
+## Usage
+
 TODO
