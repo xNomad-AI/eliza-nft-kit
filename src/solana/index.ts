@@ -8,11 +8,16 @@ import {
 } from '@metaplex-foundation/mpl-core';
 import {
   createSignerFromKeypair,
+  keypairIdentity,
   publicKey,
   TransactionBuilderSendAndConfirmOptions,
   Umi,
 } from '@metaplex-foundation/umi';
 import { createUmi } from '@metaplex-foundation/umi-bundle-defaults';
+import {
+  WalletAdapter,
+  walletAdapterIdentity,
+} from '@metaplex-foundation/umi-signer-wallet-adapters';
 import { awsUploader } from '@metaplex-foundation/umi-uploader-aws';
 import { Keypair, PublicKey } from '@solana/web3.js';
 
@@ -20,8 +25,24 @@ export class NftTool {
   private umi: Umi;
   private sendAndConfirmOptions: TransactionBuilderSendAndConfirmOptions;
 
-  constructor(private endpoint: string, private keypair: Keypair) {
-    this.umi = createUmi(endpoint).use(mplCore());
+  constructor(
+    endpoint: string,
+    keypairOrWalletAdapter: Keypair | WalletAdapter,
+  ) {
+    if (keypairOrWalletAdapter instanceof Keypair) {
+      this.umi = createUmi(endpoint)
+        .use(mplCore())
+        .use(
+          keypairIdentity({
+            secretKey: keypairOrWalletAdapter.secretKey,
+            publicKey: publicKey(keypairOrWalletAdapter.publicKey),
+          }),
+        );
+    } else {
+      this.umi = createUmi(endpoint)
+        .use(mplCore())
+        .use(walletAdapterIdentity(keypairOrWalletAdapter));
+    }
     this.sendAndConfirmOptions = {
       confirm: { commitment: 'confirmed' },
     };
@@ -54,7 +75,7 @@ export class NftTool {
               basisPoints: royaltyBps,
               creators: [
                 {
-                  address: publicKey(this.keypair.publicKey),
+                  address: publicKey(this.umi.identity.publicKey),
                   percentage: 100,
                 },
               ],
