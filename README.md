@@ -25,4 +25,49 @@ npm install @xnomad/mcv
 
 ## Usage
 
-TODO
+Create a collection on Solana.
+
+```typescript
+const nftTool = new NftTool('https://api.mainnet-beta.solana.com', keypair);
+const { collection } = await nftTool.createCollection({
+  name: 'example',
+  uri: 'https://example.com',
+  royaltyBps: 100,
+});
+
+const { candyMachine } = await nftTool.setupCollection({
+  collectionAddress: collection,
+  itemsCount: 3,
+  mintStages: [
+    {
+      label: '1',
+      priceInSol: 0.01,
+      startDate: new Date(),
+    },
+  ],
+});
+
+await nftTool.prepareCollectionItems({
+  candyMachine,
+  index: 0,
+  items: [
+    { name: 'example #1', uri: 'https://example.com/1.json' },
+    { name: 'example #2', uri: 'https://example.com/2.json' },
+    { name: 'example #3', uri: 'https://example.com/3.json' },
+  ],
+});
+```
+
+Upload metadata json to S3.
+
+```typescript
+const url = await nftTool.uploadJsonToS3({
+  json: metadata,
+  s3Config: {
+    bucket: 'bucket',
+    accessKeyId: 'accessKeyId',
+    secretAccessKey: 'secretAccessKey',
+    region: 'region',
+  },
+});
+```
