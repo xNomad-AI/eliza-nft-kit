@@ -9,6 +9,7 @@ import {
 import {
   addConfigLines,
   create as createCandyMachine,
+  getMerkleRoot,
   MAX_NAME_LENGTH,
   MAX_URI_LENGTH,
   mplCandyMachine,
@@ -160,6 +161,9 @@ export class NftTool {
                 stage.maxMintsPerWallet !== undefined
                   ? some({ id: index, limit: stage.maxMintsPerWallet })
                   : undefined,
+              allowList: stage.whitelist?.length
+                ? some({ merkleRoot: getMerkleRoot(stage.whitelist) })
+                : undefined,
             },
           }))
         : undefined,

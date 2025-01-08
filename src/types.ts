@@ -87,4 +87,8 @@ export interface MintStage {
    * The maximum number of mints per wallet.
    */
   maxMintsPerWallet?: number;
+  /**
+   * The whitelist of addresses that can mint during this stage.
+   */
+  whitelist?: string[];
 }
