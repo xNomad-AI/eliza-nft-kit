@@ -18,8 +18,8 @@ import {
   createSignerFromKeypair,
   dateTime,
   keypairIdentity,
-  lamports,
   publicKey,
+  sol,
   some,
   TransactionBuilderSendAndConfirmOptions,
   Umi,
@@ -140,13 +140,13 @@ export class NftTool {
       collection: publicKey(collectionAddress),
       collectionUpdateAuthority: this.umi.identity,
       itemsAvailable: itemsCount,
-      configLineSettings: {
+      configLineSettings: some({
         prefixName: '',
         nameLength: MAX_NAME_LENGTH,
         prefixUri: '',
         uriLength: MAX_URI_LENGTH,
         isSequential: true,
-      },
+      }),
       groups: mintStages?.length
         ? mintStages.map((stage, index) => ({
             label: stage.label,
@@ -154,7 +154,7 @@ export class NftTool {
               startDate: some({ date: dateTime(stage.startDate) }),
               endDate: stage.endDate && some({ date: dateTime(stage.endDate) }),
               solPayment: some({
-                lamports: lamports(stage.priceInSol),
+                lamports: sol(stage.priceInSol),
                 destination: this.umi.identity.publicKey,
               }),
               mintLimit:
@@ -188,12 +188,12 @@ export class NftTool {
     items,
   }: {
     candyMachine: PublicKey | string;
-    index?: number;
+    index: number;
     items: { name: string; uri: string }[];
   }) {
     const result = await addConfigLines(this.umi, {
       candyMachine: publicKey(candyMachine),
-      index: 0,
+      index,
       configLines: items.map((item) => ({ name: item.name, uri: item.uri })),
     }).sendAndConfirm(this.umi, this.sendAndConfirmOptions);
 
