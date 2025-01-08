@@ -25,22 +25,59 @@ npm install @xnomad/mcv
 
 ### Usage
 
-Create an AI-NFT collection on Solana:
+#### Create an AI-NFT collection on Solana
 
 ```typescript
-// Initialize AI-NFT tool with Solana network endpoint and keypair
-const nftTool = new NftTool('https://api.mainnet-beta.solana.com', keypair);
+import { SolanaMCV, uploadJsonToS3, createAiNftMetadata } from '@xnomad/mcv';
+
+// Your AI-NFT collection and NFT metadata.
+// See https://developers.metaplex.com/token-metadata/token-standard
+const collectionMetadataJson = { ... }
+const nftMetadataJsonList = [
+  { ... },
+  { ... },
+  { ... },
+];
+// Your AI agent characters corresponding to the NFTs
+// See https://elizaos.github.io/eliza/docs/core/characterfile/
+const characterJsonList = [
+  { ... },
+  { ... },
+  { ... },
+];
+const aiNftMetadataList = nftMetadataJsonList.map(
+  (metadata, index) =>
+    createAiNftMetadata(
+      metadata,
+      AiAgentEngine.ELIZA,
+      characterJsonList[index],
+    ),
+);
+
+// Upload your collection and NFT metadata to S3 (use uploadJsonToS3) or IPFS (use uploadJsonToIpfs)
+const collectionUri = await uploadJsonToS3(collectionMetadataJson, {
+  bucket: 'bucket',
+  accessKeyId: 'accessKeyId',
+  secretAccessKey: 'secretAccessKey',
+  region: 'region',
+});
+const nftUris = await Promise.all(
+  aiNftMetadataList.map(metadata => uploadJsonToS3(metadata, {
+    bucket: 'bucket',
+    accessKeyId: 'accessKeyId',
+    secretAccessKey: 'secretAccessKey',
+    region: 'region',
+  })),
+);
+
+// create SolanaMCV instance
+const mcv = new SolanaMCV('https://api.mainnet-beta.solana.com', keypairOrWalletAdapter);
 
 // Create AI-NFT collection
-const { collection } = await nftTool.createCollection({
-  name: 'example', // Collection name
-  uri: 'https://example.com', // Collection metadata URI
+await mcv.createCollection({
+  name: collectionMetadataJson.name, // Collection name
+  uri: collectionUri, // Collection metadata URI
   royaltyBps: 100, // Royalty basis points, 100 = 1%
-});
-
-// Setup Candy Machine configuration
-const { candyMachine } = await nftTool.setupCollection({
-  collectionAddress: collection, // Collection address
   itemsCount: 3, // Total number of NFTs
   mintStages: [
     // Mint phase configuration
@@ -48,36 +85,14 @@ const { candyMachine } = await nftTool.setupCollection({
       label: '1', // Phase label
       priceInSol: 0.01, // Mint price in SOL
       startDate: new Date(), // Start time
+      endDate: new Date(Date.now() + 1000 * 60 * 60 * 24 * 7), // End time
+      mintLimitPerUser: 1, // Mint limit per user
     },
   ],
-});
-
-// Prepare AI-NFT items in the collection
-await nftTool.prepareCollectionItems({
-  candyMachine, // Candy Machine instance
-  index: 0, // Starting index
-  items: [
-    // List of AI-NFT items
-    { name: 'example #1', uri: 'https://example.com/1.json' },
-    { name: 'example #2', uri: 'https://example.com/2.json' },
-    { name: 'example #3', uri: 'https://example.com/3.json' },
-  ],
-});
-```
-
-Upload metadata(with Eliza character JSON) to S3:
-
-```typescript
-// Upload JSON metadata to AWS S3
-const url = await nftTool.uploadJsonToS3({
-  json: metadata, // Metadata object
-  s3Config: {
-    // S3 configuration
-    bucket: 'bucket', // Bucket name
-    accessKeyId: 'accessKeyId', // AWS access key ID
-    secretAccessKey: 'secretAccessKey', // AWS secret key
-    region: 'region', // AWS region
-  },
+  items: nftUris.map((uri, index) => ({
+    name: aiNftMetadataList[index].name,
+    uri,
+  })),
 });
 ```
 

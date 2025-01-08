@@ -1,4 +1,3 @@
-import { S3Client } from '@aws-sdk/client-s3';
 import {
   create,
   createCollection,
@@ -29,15 +28,13 @@ import {
   WalletAdapter,
   walletAdapterIdentity,
 } from '@metaplex-foundation/umi-signer-wallet-adapters';
-import { awsUploader } from '@metaplex-foundation/umi-uploader-aws';
 import { Keypair, PublicKey } from '@solana/web3.js';
-import * as Client from '@web3-storage/w3up-client';
-import { Signer } from '@web3-storage/w3up-client/principal/ed25519';
-import * as Proof from '@web3-storage/w3up-client/proof';
-import { StoreMemory } from '@web3-storage/w3up-client/stores/memory';
 import { MintStage } from '../types';
 
-export class NftTool {
+/**
+ * A class that provides methods to launch an AI-NFT collection on Solana.
+ */
+export class SolanaMCV {
   private umi: Umi;
   private sendAndConfirmOptions: TransactionBuilderSendAndConfirmOptions;
 
@@ -62,30 +59,42 @@ export class NftTool {
   }
 
   /**
-   * Create a collection
+   * Create an AI-NFT collection
    * @param collection - The collection keypair
    * @param name - The name of the collection
    * @param uri - The URI of the collection
-   * @param royaltyBps - The royalty basis points
-   * @returns The collection address
+   * @param royaltyBps - The royalty basis points. It means 5% if set to 500.
+   * @param candyMachine - The candy machine keypair
+   * @param itemsCount - The number of items in the candy machine
+   * @param mintStages - The mint stages
+   * @param items - All NFTs in the collection
+   * @returns The collection and candy machine addresses
    */
-  async createCollection({
+  async createAiNftCollection({
     collection = Keypair.generate(),
     name,
     uri,
     royaltyBps,
+    candyMachine = Keypair.generate(),
+    itemsCount,
+    mintStages,
+    items,
   }: {
     collection?: Keypair;
     name: string;
     uri: string;
     royaltyBps?: number;
-  }): Promise<{ collection: string }> {
+    candyMachine?: Keypair;
+    itemsCount: number;
+    mintStages?: MintStage[];
+    items: { name: string; uri: string }[];
+  }): Promise<{ collection: Keypair; candyMachine: Keypair }> {
     const collectionSigner = createSignerFromKeypair(this.umi, {
       secretKey: collection.secretKey,
       publicKey: publicKey(collection.publicKey),
     });
 
-    const result = await createCollection(this.umi, {
+    await createCollection(this.umi, {
       collection: collectionSigner,
       name,
       uri,
@@ -106,30 +115,6 @@ export class NftTool {
         : undefined,
     }).sendAndConfirm(this.umi, this.sendAndConfirmOptions);
 
-    return {
-      collection: collectionSigner.publicKey.toString(),
-    };
-  }
-
-  /**
-   * Setup a collection, creating a candy machine.
-   * @param collectionAddress - The collection address
-   * @param candyMachine - The candy machine keypair
-   * @param itemsCount - The number of items in the candy machine
-   * @param mintStages - The mint stages
-   * @returns The candy machine address
-   */
-  async setupCollection({
-    collectionAddress,
-    candyMachine = Keypair.generate(),
-    itemsCount,
-    mintStages,
-  }: {
-    collectionAddress: PublicKey | string;
-    candyMachine?: Keypair;
-    itemsCount: number;
-    mintStages?: MintStage[];
-  }) {
     const candyMachineSigner = createSignerFromKeypair(this.umi, {
       secretKey: candyMachine.secretKey,
       publicKey: publicKey(candyMachine.publicKey),
@@ -137,7 +122,7 @@ export class NftTool {
 
     const createIx = await createCandyMachine(this.umi, {
       candyMachine: candyMachineSigner,
-      collection: publicKey(collectionAddress),
+      collection: collectionSigner.publicKey,
       collectionUpdateAuthority: this.umi.identity,
       itemsAvailable: itemsCount,
       configLineSettings: some({
@@ -170,19 +155,44 @@ export class NftTool {
     });
     await createIx.sendAndConfirm(this.umi, this.sendAndConfirmOptions);
 
+    await this._prepareAllNftItems({
+      candyMachine: candyMachineSigner.publicKey,
+      items,
+    });
+
     return {
-      candyMachine: candyMachineSigner.publicKey.toString(),
+      collection,
+      candyMachine,
     };
   }
 
   /**
-   * Prepare collection items to be minted
+   * Prepare all NFTs to be minted
+   * @param candyMachine - The candy machine address
+   * @param items - The items to be minted
+   */
+  private async _prepareAllNftItems({
+    candyMachine,
+    items,
+  }: {
+    candyMachine: PublicKey | string;
+    items: { name: string; uri: string }[];
+  }) {
+    const batchSize = 100;
+    for (let i = 0; i < items.length; i += batchSize) {
+      const batch = items.slice(i, i + batchSize);
+      await this._prepareNftItems({ candyMachine, index: i, items: batch });
+    }
+  }
+
+  /**
+   * Prepare NFTs to be minted
    * @param candyMachine - The candy machine address
    * @param index - The index the first items will be loaded at
    * @param items - The items to be loaded
    * @returns The result of the transaction
    */
-  async prepareCollectionItems({
+  private async _prepareNftItems({
     candyMachine,
     index,
     items,
@@ -201,14 +211,14 @@ export class NftTool {
   }
 
   /**
-   * Create an NFT
-   * @param name - The name of the NFT
-   * @param uri - The URI of the NFT
+   * Create an AI-NFT by collection owner.
+   * @param name - The name of the AI-NFT
+   * @param uri - The URI of the AI-NFT
    * @param asset - The asset keypair
    * @param collectionAddress - The collection address
    * @returns The asset address
    */
-  async createNft({
+  async createAiNft({
     name,
     uri,
     asset = Keypair.generate(),
@@ -218,7 +228,7 @@ export class NftTool {
     uri: string;
     asset?: Keypair;
     collectionAddress: PublicKey | string;
-  }): Promise<{ asset: string }> {
+  }): Promise<{ asset: Keypair }> {
     const assetSigner = createSignerFromKeypair(this.umi, {
       secretKey: asset.secretKey,
       publicKey: publicKey(asset.publicKey),
@@ -237,80 +247,7 @@ export class NftTool {
     }).sendAndConfirm(this.umi, this.sendAndConfirmOptions);
 
     return {
-      asset: assetSigner.publicKey.toString(),
+      asset,
     };
   }
-
-  /**
-   * Upload a JSON object to S3
-   * @param json - The JSON object to upload
-   * @param s3Config - The S3 configuration
-   * @param s3Config.bucket - The S3 bucket
-   * @param s3Config.accessKeyId - The S3 access key ID
-   * @param s3Config.secretAccessKey - The S3 secret access key
-   * @param s3Config.region - The S3 region
-   * @returns The URL of the uploaded JSON
-   */
-  async uploadJsonToS3(
-    json: object,
-    s3Config: {
-      bucket: string;
-      accessKeyId: string;
-      secretAccessKey: string;
-      region: string;
-    },
-  ): Promise<string> {
-    this.umi.use(
-      awsUploader(
-        new S3Client({
-          credentials: {
-            accessKeyId: s3Config.accessKeyId,
-            secretAccessKey: s3Config.secretAccessKey,
-          },
-          region: s3Config.region,
-        }),
-        s3Config.bucket,
-      ),
-    );
-    const url = await this.umi.uploader.uploadJson(json);
-    return url;
-  }
-
-  /**
-   * Upload a JSON object to Web3Storage
-   * @param json - The JSON object to upload
-   * @param web3StorageConfig - The Web3Storage configuration
-   * @param web3StorageConfig.proof - Add proof that this agent has been delegated capabilities on the space
-   * @param web3StorageConfig.privateKey - Load client with specific private key
-   */
-  async uplaodJsonToWeb3Storage(
-    json: object,
-    web3StorageConfig: {
-      proof: string;
-      privateKey: string;
-    },
-  ) {
-    const client = await createWeb3StorageClient(web3StorageConfig);
-    await client.uploadFile(
-      new Blob([JSON.stringify(json, null, 2)], { type: 'application/json' }),
-    );
-  }
-}
-
-async function createWeb3StorageClient(web3StorageConfig: {
-  privateKey: string;
-  proof: string;
-}) {
-  const principal = Signer.parse(web3StorageConfig.privateKey);
-  const proof = await Proof.parse(web3StorageConfig.proof);
-
-  const store = new StoreMemory();
-  const client = await Client.create({
-    principal,
-    store,
-  });
-  const space = await client.addSpace(proof);
-  await client.setCurrentSpace(space.did());
-
-  return client;
 }

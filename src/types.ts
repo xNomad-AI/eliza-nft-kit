@@ -40,7 +40,9 @@ export interface NftMetadata {
   }[];
 }
 
-export type AiAgentEngine = 'eliza';
+export enum AiAgentEngine {
+  ELIZA = 'eliza',
+}
 
 /**
  * AI-NFT metadata
