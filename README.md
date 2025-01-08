@@ -30,8 +30,7 @@ npm install @xnomad/mcv
 ```typescript
 import { SolanaMCV, uploadJsonToS3, createAiNftMetadata } from '@xnomad/mcv';
 
-// Your AI-NFT collection and metadata.
-// See https://developers.metaplex.com/token-metadata/token-standard
+// Your AI-NFT collection.
 const collectionMetadataJson = { ... };
 
 // Your AI agent characters corresponding to the NFTs
@@ -50,8 +49,9 @@ const characterJson = {
   ...
 };
 
+// Create AI-NFT metadata
 const aiNftMetadata = createAiNftMetadata({
-  // NFT metadata
+  // NFT metadata, see https://developers.metaplex.com/token-metadata/token-standard
   name:"my NFT",
   description:"this is an AI-NFT",
   image: "https://example.jpg"
