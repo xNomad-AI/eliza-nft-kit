@@ -25,13 +25,13 @@ npm install @xnomad/mcv
 
 ### Usage
 
-Create a collection on Solana:
+Create an AI-NFT collection on Solana:
 
 ```typescript
-// Initialize NFT tool with Solana network endpoint and keypair
+// Initialize AI-NFT tool with Solana network endpoint and keypair
 const nftTool = new NftTool('https://api.mainnet-beta.solana.com', keypair);
 
-// Create NFT collection
+// Create AI-NFT collection
 const { collection } = await nftTool.createCollection({
   name: 'example', // Collection name
   uri: 'https://example.com', // Collection metadata URI
@@ -52,12 +52,12 @@ const { candyMachine } = await nftTool.setupCollection({
   ],
 });
 
-// Prepare NFT items in the collection
+// Prepare AI-NFT items in the collection
 await nftTool.prepareCollectionItems({
   candyMachine, // Candy Machine instance
   index: 0, // Starting index
   items: [
-    // List of NFT items
+    // List of AI-NFT items
     { name: 'example #1', uri: 'https://example.com/1.json' },
     { name: 'example #2', uri: 'https://example.com/2.json' },
     { name: 'example #3', uri: 'https://example.com/3.json' },
@@ -65,7 +65,7 @@ await nftTool.prepareCollectionItems({
 });
 ```
 
-Upload metadata to S3:
+Upload metadata(with Eliza character JSON) to S3:
 
 ```typescript
 // Upload JSON metadata to AWS S3
