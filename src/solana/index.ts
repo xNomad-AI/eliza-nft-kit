@@ -30,6 +30,10 @@ import {
 } from '@metaplex-foundation/umi-signer-wallet-adapters';
 import { awsUploader } from '@metaplex-foundation/umi-uploader-aws';
 import { Keypair, PublicKey } from '@solana/web3.js';
+import * as Client from '@web3-storage/w3up-client';
+import { Signer } from '@web3-storage/w3up-client/principal/ed25519';
+import * as Proof from '@web3-storage/w3up-client/proof';
+import { StoreMemory } from '@web3-storage/w3up-client/stores/memory';
 import { MintStage } from '../types';
 
 export class NftTool {
@@ -267,4 +271,42 @@ export class NftTool {
     const url = await this.umi.uploader.uploadJson(json);
     return url;
   }
+
+  /**
+   * Upload a JSON object to Web3Storage
+   * @param json - The JSON object to upload
+   * @param web3StorageConfig - The Web3Storage configuration
+   * @param web3StorageConfig.proof - Add proof that this agent has been delegated capabilities on the space
+   * @param web3StorageConfig.privateKey - Load client with specific private key
+   */
+  async uplaodJsonToWeb3Storage(
+    json: object,
+    web3StorageConfig: {
+      proof: string;
+      privateKey: string;
+    },
+  ) {
+    const client = await createWeb3StorageClient(web3StorageConfig);
+    await client.uploadFile(
+      new Blob([JSON.stringify(json, null, 2)], { type: 'application/json' }),
+    );
+  }
+}
+
+async function createWeb3StorageClient(web3StorageConfig: {
+  privateKey: string;
+  proof: string;
+}) {
+  const principal = Signer.parse(web3StorageConfig.privateKey);
+  const proof = await Proof.parse(web3StorageConfig.proof);
+
+  const store = new StoreMemory();
+  const client = await Client.create({
+    principal,
+    store,
+  });
+  const space = await client.addSpace(proof);
+  await client.setCurrentSpace(space.did());
+
+  return client;
 }
