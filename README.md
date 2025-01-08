@@ -1,29 +1,29 @@
-# MCV
+# MCV 🚀
 
 An out-of-box dev kit to launch your AI-NFT based on [Eliza](https://github.com/elizaOS/eliza) on multichain, like the MCV(Mobile Construction Vehicle) in Red Alert(a popular game).
 
-# Features
+## ✨ Features
 
-- Package AI-NFT [metadata](https://docs.xnomad.ai/ai-nft-metadata) using Eliza’s character files.
-- Enable conversion of NFT traits into personalities and integration into character files.
-- Provide basic functionalities such as Deploy, Mint and Burn(set it free) AI-NFT.
-- Support contract-level AI-NFT management on multichain.
-- Enable AI Agents to launch AI-NFT.
+- Package AI-NFT [metadata](https://docs.xnomad.ai/ai-nft-metadata) using Eliza's character files
+- Enable conversion of NFT traits into personalities and integration into character files
+- Provide basic functionalities such as Deploy, Mint and Burn(set it free) AI-NFT
+- Support contract-level AI-NFT management on multichain
+- Enable AI Agents to launch AI-NFT
 
-# Supported Blockchain
+## ⛓️ Supported Blockchain
 
 - Solana
-- EVM
+- EVM (Coming soon)
 
-# Quick Start
+## 🌐 Quick Start
 
-## Install
+### Installation
 
 ```
 npm install @xnomad/mcv
 ```
 
-## Usage
+### Usage
 
 Create a collection on Solana:
 
@@ -80,3 +80,22 @@ const url = await nftTool.uploadJsonToS3({
   },
 });
 ```
+
+## 📜 License
+
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+
+## 📞 Contact
+
+- **Website**: [xnomad.ai](https://xnomad.ai)
+- **Twitter**: [@xNomadAI](https://x.com/xNomadAI)
+
+For questions and support, please open an issue in the GitHub repository.
+
+Developed with ❤️ by the xNomad Team.
+
+## 🙏 Acknowledgments
+
+A big thank you to everyone who contributed to the development of this project.
+
+Developed with ❤️ by the xNomad Team.
