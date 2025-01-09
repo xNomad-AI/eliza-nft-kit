@@ -54,6 +54,7 @@ export class SolanaMCV {
           : walletAdapterIdentity(keypairOrWalletAdapter),
       );
     this.sendAndConfirmOptions = {
+      send: { skipPreflight: true },
       confirm: { commitment: 'confirmed' },
     };
   }
