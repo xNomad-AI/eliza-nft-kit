@@ -38,6 +38,32 @@ export interface NftMetadata {
      */
     value: string;
   }[];
+  /**
+   * Additional properties that define the asset.
+   */
+  properties: {
+    /**
+     * Additional files to include with the asset.
+     */
+    files: {
+      /**
+       * The file's URI.
+       */
+      uri: string;
+      /**
+       * The file's type. E.g. image/png, video/mp4, etc.
+       */
+      type: string;
+      /**
+       * Whether the file is served from a CDN.
+       */
+      cdn?: boolean;
+    }[];
+    /**
+     * A media category for the asset. E.g. video, image, etc.
+     */
+    category: string;
+  };
 }
 
 export enum AiAgentEngine {
