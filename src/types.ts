@@ -91,6 +91,8 @@ export type AiNftMetadata = NftMetadata & {
   };
 };
 
+export type CollectionInfo = NftMetadata;
+
 /**
  * Mint stage configuration
  */

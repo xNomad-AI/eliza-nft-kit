@@ -29,7 +29,8 @@ import {
   walletAdapterIdentity,
 } from '@metaplex-foundation/umi-signer-wallet-adapters';
 import { Keypair, PublicKey } from '@solana/web3.js';
-import { MintStage } from '../types';
+import { AiNftMetadata, CollectionInfo, MintStage } from '../types.js';
+import { Uploader } from '../upload.js';
 
 /**
  * A class that provides methods to launch an AI-NFT collection on Solana.
@@ -250,5 +251,30 @@ export class SolanaMCV {
     return {
       asset,
     };
+  }
+
+  /**
+   * Upload all AI-NFT metadata
+   * @param metadataList - The AI-NFT metadata
+   * @param collectionInfo - The collection info
+   * @param uploader - The uploader
+   * @returns The URLs of the uploaded files
+   */
+  async uploadAllAiNftMetadata({
+    metadataList,
+    collectionInfo,
+    uploader,
+  }: {
+    metadataList: AiNftMetadata[];
+    collectionInfo: CollectionInfo;
+    uploader: Uploader;
+  }) {
+    const files = [collectionInfo, ...metadataList].map(
+      (metadata, index) =>
+        new File([JSON.stringify(metadata, null, 2)], `${index}.json`, {
+          type: 'application/json',
+        }),
+    );
+    return await uploader.uploadFiles(files);
   }
 }
