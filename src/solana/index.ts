@@ -275,6 +275,10 @@ export class SolanaMCV {
           type: 'application/json',
         }),
     );
-    return await uploader.uploadFiles(files);
+    const uris = await uploader.uploadFiles(files);
+    return {
+      collectionUri: uris[0],
+      nftUris: uris.slice(1),
+    };
   }
 }
