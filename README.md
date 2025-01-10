@@ -28,54 +28,79 @@ npm install @xnomad/mcv
 #### Create an AI-NFT collection on Solana
 
 ```typescript
-import { SolanaMCV, uploadJsonToS3, createAiNftMetadata } from '@xnomad/mcv';
+import {
+  SolanaMCV,
+  uploadJsonToS3,
+  createAiNftMetadata,
+  CollectionInfo,
+  createAwsS3Uploader,
+  createWeb3StorageUploader,
+} from '@xnomad/mcv';
+import { clusterApiUrl } from '@solana/web3.js';
 
-// Your AI-NFT collection and NFT metadata.
-// See https://developers.metaplex.com/token-metadata/token-standard
-const collectionMetadataJson = { ... }
-const nftMetadataJsonList = [
-  { ... },
-  { ... },
-  { ... },
-];
+// Your AI-NFT collection.
+const collectionInfo: CollectionInfo = {
+  name: "my collection",
+  description: "this is an AI-NFT collection",
+  image: "https://example.jpg",
+  ...
+};
+
 // Your AI agent characters corresponding to the NFTs
 // See https://elizaos.github.io/eliza/docs/core/characterfile/
-const characterJsonList = [
-  { ... },
-  { ... },
-  { ... },
-];
-const aiNftMetadataList = nftMetadataJsonList.map(
-  (metadata, index) =>
-    createAiNftMetadata(
-      metadata,
-      AiAgentEngine.ELIZA,
-      characterJsonList[index],
-    ),
-);
+const characterJson = {
+  // agent name
+  name:"eliza",
+  // background statements
+  bio: [
+    "Bio lines are each short snippets which can be composed together in a random order.",
+  ],
+  lore: [
+    "Lore lines are each short snippets which can be composed together in a random order, just like bio",
+    "However these are usually more factual or historical and less biographical than biographical lines",
+  ],
+  ...
+};
 
-// Upload your collection and NFT metadata to S3 (use uploadJsonToS3) or IPFS (use uploadJsonToIpfs)
-const collectionUri = await uploadJsonToS3(collectionMetadataJson, {
-  bucket: 'bucket',
-  accessKeyId: 'accessKeyId',
-  secretAccessKey: 'secretAccessKey',
-  region: 'region',
-});
-const nftUris = await Promise.all(
-  aiNftMetadataList.map(metadata => uploadJsonToS3(metadata, {
-    bucket: 'bucket',
-    accessKeyId: 'accessKeyId',
-    secretAccessKey: 'secretAccessKey',
-    region: 'region',
-  })),
-);
+// Create AI-NFT metadata
+const aiNftMetadata = createAiNftMetadata({
+  // NFT metadata, see https://developers.metaplex.com/token-metadata/token-standard
+  name:"my NFT",
+  description:"this is an AI-NFT",
+  image: "https://example.jpg"
+}, AiAgentEngine.ELIZA, characterJson);
 
 // create SolanaMCV instance
-const mcv = new SolanaMCV('https://api.mainnet-beta.solana.com', keypairOrWalletAdapter);
+const mcv = new SolanaMCV(clusterApiUrl('devnet'), keypairOrWalletAdapter);
+
+// Upload AI-NFT metadata to S3
+const { collectionUri, nftUris } = await mcv.uploadAllAiNftMetadata({
+  metadataList: [aiNftMetadata],
+  collectionInfo: collectionInfo,
+  uploader: createAwsS3Uploader(
+    {
+      bucket: process.env.S3_BUCKET!,
+      accessKeyId: process.env.S3_ACCESS_KEY!,
+      secretAccessKey: process.env.S3_SECRET_KEY!,
+      region: process.env.S3_REGION!,
+    },
+    process.env.S3_BASE_URL!,
+    (filename) => `metadata/${filename}`,
+  ),
+});
+// Alternatively, you can upload to IPFS
+const { collectionUri, nftUris } = await mcv.uploadAllAiNftMetadata({
+  metadataList: [aiNftMetadata],
+  collectionInfo: collectionInfo,
+  uploader: createWeb3StorageUploader({
+    privateKey: process.env.WEB3_STORAGE_PRIVATE_KEY!,
+    proof: process.env.WEB3_STORAGE_PROOF!,
+  }),
+});
 
 // Create AI-NFT collection
 await mcv.createCollection({
-  name: collectionMetadataJson.name, // Collection name
+  name: collectionInfo.name, // Collection name
   uri: collectionUri, // Collection metadata URI
   royaltyBps: 100, // Royalty basis points, 100 = 1%
   itemsCount: 3, // Total number of NFTs
@@ -89,10 +114,12 @@ await mcv.createCollection({
       mintLimitPerUser: 1, // Mint limit per user
     },
   ],
-  items: nftUris.map((uri, index) => ({
-    name: aiNftMetadataList[index].name,
-    uri,
-  })),
+  items:[
+    {
+      name: aiNftMetadata.name,
+      uri: nftUris[0]
+    }
+  ]
 });
 ```
 

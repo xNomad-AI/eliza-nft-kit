@@ -8,4 +8,6 @@ export class EvmMCV {
   async createAiNftCollection() {}
 
   async createAiNft() {}
+
+  async uploadAllAiNftMetadata() {}
 }
