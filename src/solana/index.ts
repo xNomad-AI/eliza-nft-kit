@@ -8,14 +8,19 @@ import {
 import {
   addConfigLines,
   create as createCandyMachine,
+  DefaultGuardSetMintArgs,
+  fetchCandyGuard,
+  fetchCandyMachine,
   getMerkleRoot,
   MAX_NAME_LENGTH,
   MAX_URI_LENGTH,
+  mintV1,
   mplCandyMachine,
 } from '@metaplex-foundation/mpl-core-candy-machine';
 import {
   createSignerFromKeypair,
   dateTime,
+  isSome,
   keypairIdentity,
   publicKey,
   sol,
@@ -70,6 +75,8 @@ export class SolanaMCV {
    * @param itemsCount - The number of items in the candy machine
    * @param mintStages - The mint stages
    * @param items - All NFTs in the collection
+   * @param batchSize - Specify how many items to prepare in one transaction.
+   * Try to decrease it if the name and uri of the items are long.
    * @returns The collection and candy machine addresses
    */
   async createAiNftCollection({
@@ -81,6 +88,7 @@ export class SolanaMCV {
     itemsCount,
     mintStages,
     items,
+    batchSize = 20,
   }: {
     collection?: Keypair;
     name: string;
@@ -90,6 +98,7 @@ export class SolanaMCV {
     itemsCount: number;
     mintStages?: MintStage[];
     items: { name: string; uri: string }[];
+    batchSize?: number;
   }): Promise<{ collection: Keypair; candyMachine: Keypair }> {
     const collectionSigner = createSignerFromKeypair(this.umi, {
       secretKey: collection.secretKey,
@@ -160,6 +169,7 @@ export class SolanaMCV {
     await this._prepareAllNftItems({
       candyMachine: candyMachineSigner.publicKey,
       items,
+      batchSize,
     });
 
     return {
@@ -172,15 +182,17 @@ export class SolanaMCV {
    * Prepare all NFTs to be minted
    * @param candyMachine - The candy machine address
    * @param items - The items to be minted
+   * @param batchSize - Specify how many items to prepare in one transaction. Try to decrease it if the name and uri of the items are long.
    */
   private async _prepareAllNftItems({
     candyMachine,
     items,
+    batchSize,
   }: {
     candyMachine: PublicKey | string;
     items: { name: string; uri: string }[];
+    batchSize: number;
   }) {
-    const batchSize = 100;
     for (let i = 0; i < items.length; i += batchSize) {
       const batch = items.slice(i, i + batchSize);
       await this._prepareNftItems({ candyMachine, index: i, items: batch });
@@ -210,6 +222,83 @@ export class SolanaMCV {
     }).sendAndConfirm(this.umi, this.sendAndConfirmOptions);
 
     return result;
+  }
+
+  /**
+   * Mint an AI-NFT by user.
+   * TODO: support allow list
+   * @param asset - The asset keypair
+   * @param collection - The collection address
+   * @param candyMachine - The candy machine address
+   * @param mintStages - The mint stages
+   * @param stageIndex - The index of the mint stage
+   */
+  async mintAiNft({
+    asset = Keypair.generate(),
+    collection,
+    candyMachine,
+    stageIndex,
+  }: {
+    asset?: Keypair;
+    collection: PublicKey | string;
+    candyMachine: PublicKey | string;
+    stageIndex?: number;
+  }) {
+    const candyMachineInfo = await fetchCandyMachine(
+      this.umi,
+      publicKey(candyMachine),
+    );
+
+    const candyGuard = await fetchCandyGuard(
+      this.umi,
+      candyMachineInfo.mintAuthority,
+    );
+
+    const mergedGuards =
+      stageIndex !== undefined
+        ? {
+            ...candyGuard.guards,
+            ...candyGuard.groups[stageIndex].guards,
+          }
+        : candyGuard.guards;
+    const label =
+      stageIndex !== undefined
+        ? candyGuard.groups[stageIndex].label
+        : undefined;
+
+    let mintArgs: Partial<DefaultGuardSetMintArgs> = {};
+    if (isSome(mergedGuards.solPayment)) {
+      mintArgs.solPayment = some({
+        destination: mergedGuards.solPayment.value.destination,
+      });
+    }
+    if (isSome(mergedGuards.mintLimit)) {
+      mintArgs.mintLimit = some({
+        id: mergedGuards.mintLimit.value.id,
+      });
+    }
+    if (isSome(mergedGuards.allowList)) {
+      mintArgs.allowList = some({
+        merkleRoot: mergedGuards.allowList.value.merkleRoot,
+      });
+    }
+
+    const assetSigner = createSignerFromKeypair(this.umi, {
+      secretKey: asset.secretKey,
+      publicKey: publicKey(asset.publicKey),
+    });
+
+    await mintV1(this.umi, {
+      candyMachine: publicKey(candyMachine),
+      asset: assetSigner,
+      collection: publicKey(collection),
+      group: label ? some(label) : undefined,
+      mintArgs,
+    }).sendAndConfirm(this.umi, this.sendAndConfirmOptions);
+
+    return {
+      asset,
+    };
   }
 
   /**
