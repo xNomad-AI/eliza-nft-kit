@@ -8,14 +8,19 @@ import {
 import {
   addConfigLines,
   create as createCandyMachine,
+  DefaultGuardSetMintArgs,
+  fetchCandyGuard,
+  fetchCandyMachine,
   getMerkleRoot,
   MAX_NAME_LENGTH,
   MAX_URI_LENGTH,
+  mintV1,
   mplCandyMachine,
 } from '@metaplex-foundation/mpl-core-candy-machine';
 import {
   createSignerFromKeypair,
   dateTime,
+  isSome,
   keypairIdentity,
   publicKey,
   sol,
@@ -210,6 +215,94 @@ export class SolanaMCV {
     }).sendAndConfirm(this.umi, this.sendAndConfirmOptions);
 
     return result;
+  }
+
+  /**
+   * Mint an AI-NFT by user.
+   * TODO: support allow list
+   * @param asset - The asset keypair
+   * @param collection - The collection address
+   * @param candyMachine - The candy machine address
+   * @param mintStages - The mint stages
+   * @param stageIndex - The index of the mint stage
+   */
+  async mintAiNft({
+    asset = Keypair.generate(),
+    collection,
+    candyMachine,
+    stageIndex,
+  }: {
+    asset?: Keypair;
+    collection: PublicKey | string;
+    candyMachine: PublicKey | string;
+    stageIndex?: number;
+  }) {
+    const candyMachineInfo = await fetchCandyMachine(
+      this.umi,
+      publicKey(candyMachine),
+    );
+
+    const candyGuard = await fetchCandyGuard(
+      this.umi,
+      candyMachineInfo.mintAuthority,
+    );
+    console.log('candy guard', candyGuard);
+
+    console.log('groups length: ', candyGuard.groups.length);
+
+    const mergedGuards =
+      stageIndex !== undefined
+        ? {
+            ...candyGuard.guards,
+            ...candyGuard.groups[stageIndex].guards,
+          }
+        : candyGuard.guards;
+    const label =
+      stageIndex !== undefined
+        ? candyGuard.groups[stageIndex].label
+        : undefined;
+
+    let mintArgs: Partial<DefaultGuardSetMintArgs> = {};
+    if (isSome(mergedGuards.solPayment)) {
+      mintArgs.solPayment = some({
+        destination: mergedGuards.solPayment.value.destination,
+      });
+    }
+    if (isSome(mergedGuards.mintLimit)) {
+      mintArgs.mintLimit = some({
+        id: mergedGuards.mintLimit.value.id,
+      });
+    }
+    if (isSome(mergedGuards.allowList)) {
+      mintArgs.allowList = some({
+        merkleRoot: mergedGuards.allowList.value.merkleRoot,
+      });
+    }
+
+    const assetSigner = createSignerFromKeypair(this.umi, {
+      secretKey: asset.secretKey,
+      publicKey: publicKey(asset.publicKey),
+    });
+
+    console.log('mint params', {
+      candyMachine: publicKey(candyMachine),
+      asset: assetSigner,
+      collection: publicKey(collection),
+      group: label ? some(label) : undefined,
+      mintArgs,
+    });
+
+    await mintV1(this.umi, {
+      candyMachine: publicKey(candyMachine),
+      asset: assetSigner,
+      collection: publicKey(collection),
+      group: label ? some(label) : undefined,
+      mintArgs,
+    }).sendAndConfirm(this.umi, this.sendAndConfirmOptions);
+
+    return {
+      asset,
+    };
   }
 
   /**
