@@ -99,7 +99,7 @@ const { collectionUri, nftUris } = await mcv.uploadAllAiNftMetadata({
 });
 
 // Create AI-NFT collection
-await mcv.createCollection({
+const result = await mcv.createCollection({
   name: collectionInfo.name, // Collection name
   uri: collectionUri, // Collection metadata URI
   royaltyBps: 100, // Royalty basis points, 100 = 1%
@@ -120,6 +120,14 @@ await mcv.createCollection({
       uri: nftUris[0]
     }
   ]
+});
+
+// User mint
+const mcv = new SolanaMCV(clusterApiUrl('devnet'), UserKeypairOrWalletAdapter);
+await mcv.mintAiNft({
+  collection: result.collection, // collection address
+  candyMachine: result.candyMachine, // candy machine address
+  stageIndex: 0, // mint stage index
 });
 ```
 

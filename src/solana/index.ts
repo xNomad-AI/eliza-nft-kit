@@ -253,9 +253,6 @@ export class SolanaMCV {
       this.umi,
       candyMachineInfo.mintAuthority,
     );
-    console.log('candy guard', candyGuard);
-
-    console.log('groups length: ', candyGuard.groups.length);
 
     const mergedGuards =
       stageIndex !== undefined
@@ -289,14 +286,6 @@ export class SolanaMCV {
     const assetSigner = createSignerFromKeypair(this.umi, {
       secretKey: asset.secretKey,
       publicKey: publicKey(asset.publicKey),
-    });
-
-    console.log('mint params', {
-      candyMachine: publicKey(candyMachine),
-      asset: assetSigner,
-      collection: publicKey(collection),
-      group: label ? some(label) : undefined,
-      mintArgs,
     });
 
     await mintV1(this.umi, {
