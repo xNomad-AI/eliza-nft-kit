@@ -75,6 +75,8 @@ export class SolanaMCV {
    * @param itemsCount - The number of items in the candy machine
    * @param mintStages - The mint stages
    * @param items - All NFTs in the collection
+   * @param batchSize - Specify how many items to prepare in one transaction.
+   * Try to decrease it if the name and uri of the items are long.
    * @returns The collection and candy machine addresses
    */
   async createAiNftCollection({
@@ -86,6 +88,7 @@ export class SolanaMCV {
     itemsCount,
     mintStages,
     items,
+    batchSize = 20,
   }: {
     collection?: Keypair;
     name: string;
@@ -95,6 +98,7 @@ export class SolanaMCV {
     itemsCount: number;
     mintStages?: MintStage[];
     items: { name: string; uri: string }[];
+    batchSize?: number;
   }): Promise<{ collection: Keypair; candyMachine: Keypair }> {
     const collectionSigner = createSignerFromKeypair(this.umi, {
       secretKey: collection.secretKey,
@@ -165,6 +169,7 @@ export class SolanaMCV {
     await this._prepareAllNftItems({
       candyMachine: candyMachineSigner.publicKey,
       items,
+      batchSize,
     });
 
     return {
@@ -177,15 +182,17 @@ export class SolanaMCV {
    * Prepare all NFTs to be minted
    * @param candyMachine - The candy machine address
    * @param items - The items to be minted
+   * @param batchSize - Specify how many items to prepare in one transaction. Try to decrease it if the name and uri of the items are long.
    */
   private async _prepareAllNftItems({
     candyMachine,
     items,
+    batchSize,
   }: {
     candyMachine: PublicKey | string;
     items: { name: string; uri: string }[];
+    batchSize: number;
   }) {
-    const batchSize = 100;
     for (let i = 0; i < items.length; i += batchSize) {
       const batch = items.slice(i, i + batchSize);
       await this._prepareNftItems({ candyMachine, index: i, items: batch });
