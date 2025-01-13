@@ -128,6 +128,7 @@ await mcv.mintAiNft({
   collection: result.collection, // collection address
   candyMachine: result.candyMachine, // candy machine address
   stageIndex: 0, // mint stage index
+  merkleProof: mcv.getMerkleProof(whitelistAddresses, userAddress) // required if whitelist is set in mint stage
 });
 ```
 
