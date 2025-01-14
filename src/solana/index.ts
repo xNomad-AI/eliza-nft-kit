@@ -11,11 +11,14 @@ import {
   DefaultGuardSetMintArgs,
   fetchCandyGuard,
   fetchCandyMachine,
+  getMerkleProof,
   getMerkleRoot,
   MAX_NAME_LENGTH,
   MAX_URI_LENGTH,
   mintV1,
   mplCandyMachine,
+  route,
+  safeFetchAllowListProofFromSeeds,
 } from '@metaplex-foundation/mpl-core-candy-machine';
 import {
   createSignerFromKeypair,
@@ -226,23 +229,25 @@ export class SolanaMCV {
 
   /**
    * Mint an AI-NFT by user.
-   * TODO: support allow list
    * @param asset - The asset keypair
    * @param collection - The collection address
    * @param candyMachine - The candy machine address
    * @param mintStages - The mint stages
    * @param stageIndex - The index of the mint stage
+   * @param merkleProof - The merkle proof. Required if the mint stage is for whitelist.
    */
   async mintAiNft({
     asset = Keypair.generate(),
     collection,
     candyMachine,
     stageIndex,
+    merkleProof,
   }: {
     asset?: Keypair;
     collection: PublicKey | string;
     candyMachine: PublicKey | string;
     stageIndex?: number;
+    merkleProof?: Uint8Array[];
   }) {
     const candyMachineInfo = await fetchCandyMachine(
       this.umi,
@@ -281,6 +286,33 @@ export class SolanaMCV {
       mintArgs.allowList = some({
         merkleRoot: mergedGuards.allowList.value.merkleRoot,
       });
+
+      const merkleRoot = mergedGuards.allowList.value.merkleRoot;
+
+      const allowListProof = await safeFetchAllowListProofFromSeeds(this.umi, {
+        candyMachine: publicKey(candyMachine),
+        candyGuard: candyMachineInfo.mintAuthority,
+        merkleRoot,
+        user: this.umi.identity.publicKey,
+      });
+      if (!allowListProof) {
+        if (!merkleProof) {
+          throw new Error('Merkle proof is required');
+        }
+        await route(this.umi, {
+          candyMachine: publicKey(candyMachine),
+          group: label ? some(label) : undefined,
+          guard: 'allowList',
+          routeArgs: {
+            path: 'proof',
+            merkleRoot,
+            merkleProof,
+          },
+        }).sendAndConfirm(this.umi, {
+          send: { skipPreflight: false },
+          ...this.sendAndConfirmOptions,
+        });
+      }
     }
 
     const assetSigner = createSignerFromKeypair(this.umi, {
@@ -369,5 +401,15 @@ export class SolanaMCV {
       collectionUri: uris[0],
       nftUris: uris.slice(1),
     };
+  }
+
+  /**
+   * Get the merkle proof
+   * @param whitelist - Whitelist addresses
+   * @param user - User address
+   * @returns The merkle proof
+   */
+  getMerkleProof(whitelist: string[], user: string) {
+    return getMerkleProof(whitelist, user);
   }
 }
