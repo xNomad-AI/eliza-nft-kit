@@ -1,15 +1,9 @@
-/**
- * A class that provides methods to launch an AI-NFT collection on EVM-compatible chains.
- * TODO
- */
-
-import { createWalletClient, http, WalletClient, keccak256, parseGwei, zeroHash, encodeDeployData, createPublicClient, Chain, EIP1193RequestFn, TransportConfig, PrivateKeyAccount, PublicClient } from 'viem'
+import { createWalletClient, http, WalletClient, keccak256, parseGwei, zeroHash, encodeDeployData, createPublicClient, PublicClient } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
 import McvLaunchNFT from '../common/abi/McvLaunchNFT.js';
 import { EvmMintStage, WhitelistWithLimit } from '../types.js';
 import { MerkleTree } from 'merkletreejs';
 import { ZeroHash } from 'ethers';
-// import { publicClient } from 'viem'
 
 export class EvmMCV {
   private client: PublicClient;
