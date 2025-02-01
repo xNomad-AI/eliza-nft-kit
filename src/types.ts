@@ -122,3 +122,31 @@ export interface MintStage {
    */
   whitelist?: string[];
 }
+
+export interface EvmMintStage {
+   /**
+    * The price per nft for the mint stage.
+    */
+   pricePerNFT: number;
+   /**
+    * The start date of the mint stage.
+    */
+   startDate: Date;
+   /**
+    * The end date of the mint stage.
+    */
+   endDate?: Date;
+   /**
+    * The maximum number of mints per wallet.
+    */
+   maxMintsPerWallet?: number;
+   /**
+    * The whitelist of addresses that can mint during this stage.
+    */
+   whitelist?: string[] | WhitelistWithLimit[];
+}
+
+export interface WhitelistWithLimit {
+  address: string;
+  mintLimit: number;
+}
