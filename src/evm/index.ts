@@ -1,4 +1,4 @@
-import { createWalletClient, http, WalletClient, keccak256, parseGwei, zeroHash, encodeDeployData, createPublicClient, PublicClient } from 'viem'
+import { createWalletClient, http, WalletClient, keccak256, parseGwei, zeroHash, encodeDeployData, createPublicClient, PublicClient, maxUint64 } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
 import McvLaunchNFT from '../common/abi/McvLaunchNFT.js';
 import { EvmMintStage, WhitelistWithLimit } from '../types.js';
@@ -51,7 +51,7 @@ export class EvmMCV {
         royaltyBps,
         mintStages ? mintStages.map((mintStage) => ({
           startDate: Math.floor(mintStage.startDate.getTime() / 1000),
-          endDate: mintStage.endDate ? Math.floor(mintStage.endDate.getTime() / 1000) : 0,
+          endDate: mintStage.endDate ? Math.floor(mintStage.endDate.getTime() / 1000) : maxUint64,
           merkleRoot: mintStage.whitelist ? this.getMerkleRoot(mintStage.whitelist) : zeroHash,
           mintLimit: mintStage.maxMintsPerWallet ? mintStage.maxMintsPerWallet : 0,
           mintPrice: parseGwei(`${mintStage.pricePerNFT}`)
