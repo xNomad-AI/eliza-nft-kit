@@ -1,4 +1,4 @@
-import { createWalletClient, http, WalletClient, keccak256, parseGwei, zeroHash, encodeDeployData, createPublicClient, PublicClient, maxUint64 } from 'viem'
+import { createWalletClient, http, WalletClient, keccak256, parseEther, zeroHash, encodeDeployData, createPublicClient, PublicClient, maxUint64, encodeFunctionData, decodeFunctionResult } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
 import McvLaunchNFT from '../common/abi/McvLaunchNFT.js';
 import { EvmMintStage, WhitelistWithLimit } from '../types.js';
@@ -45,16 +45,17 @@ export class EvmMCV {
         symbol,
         uri,
         uriSuffix,
-        this.walletClient.account?.address,
+        this.walletClient.account!.address,
         itemsCount,
-        this.walletClient.account?.address,
+        this.walletClient.account!.address,
         royaltyBps,
         mintStages ? mintStages.map((mintStage) => ({
           startDate: Math.floor(mintStage.startDate.getTime() / 1000),
           endDate: mintStage.endDate ? Math.floor(mintStage.endDate.getTime() / 1000) : maxUint64,
           merkleRoot: mintStage.whitelist ? this.getMerkleRoot(mintStage.whitelist) : zeroHash,
           mintLimit: mintStage.maxMintsPerWallet ? mintStage.maxMintsPerWallet : 0,
-          mintPrice: parseGwei(`${mintStage.pricePerNFT}`)
+          mintPrice: parseEther(`${mintStage.pricePerNFT}`),
+          recipient: this.walletClient.account!.address,
         })) : [],
       ],
     });
@@ -71,6 +72,55 @@ export class EvmMCV {
   }
 
   async createAiNft() { }
+
+  async mintAiNft({
+    contractAddress,
+    stageIndex,
+    merkleProof,
+    quantity,
+    mintLimit,
+  }: {
+    contractAddress: string;
+    stageIndex: number;
+    merkleProof?: Uint8Array[];
+    quantity: number;
+    mintLimit?: number;
+  }): Promise<string> {
+    const stages = await this.getCollectionStages({
+      contractAddress
+    });
+    const stage = stages[stageIndex];
+    const data = encodeFunctionData({
+      abi: McvLaunchNFT.abi,
+      functionName: 'mintWithLimit',
+      args: [stageIndex, this.walletClient.account!.address, quantity, mintLimit ?? 0, merkleProof ?? []],
+    });
+    const txHash = await this.walletClient.sendTransaction({
+      data,
+      type: 'eip1559',
+      account: this.walletClient.account!,
+      to: contractAddress as `0x${string}`,
+      chain: null,
+      value: BigInt(stage.mintPrice) * BigInt(quantity),
+    });
+    await this.client.waitForTransactionReceipt({
+      hash: txHash
+    });
+    return txHash
+  }
+
+  async getCollectionStages({
+    contractAddress
+  }: {
+    contractAddress: string;
+  }): Promise<any> {
+    const decodeResult = await this.client.readContract({
+      abi: McvLaunchNFT.abi,
+      address: contractAddress as `0x${string}`,
+      functionName: 'getMintStages',
+    });
+    return decodeResult;
+  }
 
   async uploadAllAiNftMetadata() { }
 
