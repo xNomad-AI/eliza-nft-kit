@@ -1,9 +1,10 @@
 import { createWalletClient, http, WalletClient, keccak256, parseEther, zeroHash, encodeDeployData, createPublicClient, PublicClient, maxUint64, encodeFunctionData } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
 import McvLaunchNFT from '../common/abi/McvLaunchNFT.js';
-import { EvmMintStage, WhitelistWithLimit } from '../types.js';
+import { AiNftMetadata, EvmMintStage, WhitelistWithLimit } from '../types.js';
 import { MerkleTree } from 'merkletreejs';
 import { ZeroHash } from 'ethers';
+import { Uploader } from '../upload.js';
 
 export class EvmMCV {
   private client: PublicClient;
@@ -20,17 +21,17 @@ export class EvmMCV {
     })
   }
 
-    /**
-   * Create an AI-NFT collection
-   * @param name - The name of the collection
-   * @param symbol - The symbol of the collection
-   * @param uri - The URI of the collection
-   * @param uriSuffix - The URI suffix of the collection, eg. '.json'
-   * @param royaltyBps - The royalty basis points. It means 5% if set to 500.
-   * @param itemsCount - The number of items in the candy machine
-   * @param mintStages - The mint stages
-   * @returns The collection contract address
-   */
+  /**
+ * Create an AI-NFT collection
+ * @param name - The name of the collection
+ * @param symbol - The symbol of the collection
+ * @param uri - The URI of the collection
+ * @param uriSuffix - The URI suffix of the collection, eg. '.json'
+ * @param royaltyBps - The royalty basis points. It means 5% if set to 500.
+ * @param itemsCount - The number of items in the candy machine
+ * @param mintStages - The mint stages
+ * @returns The collection contract address
+ */
 
   async createAiNftCollection({
     name,
@@ -143,7 +144,32 @@ export class EvmMCV {
     return decodeResult;
   }
 
-  async uploadAllAiNftMetadata() { }
+  /**
+   * Upload all AI-NFT metadata
+   * @param metadataList - The AI-NFT metadata
+   * @param collectionInfo - The collection info
+   * @param uploader - The uploader
+   * @returns The URLs of the uploaded files and base uri
+   */
+  async uploadAllAiNftMetadata({
+    metadataList,
+    uploader,
+  }: {
+    metadataList: AiNftMetadata[];
+    uploader: Uploader;
+  }) {
+    const files = metadataList.map(
+      (metadata, index) =>
+        new File([JSON.stringify(metadata, null, 2)], `${index + 1}.json`, {
+          type: 'application/json',
+        }),
+    );
+    const uris = await uploader.uploadFiles(files);
+    return {
+      baseUrl: uris[0].replace('1.json', ''),
+      nftUris: uris,
+    };
+  }
 
   getMerkleRoot(whitelist: string[] | WhitelistWithLimit[]): string {
     if (whitelist.length === 0) {
