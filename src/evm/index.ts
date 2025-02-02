@@ -1,4 +1,4 @@
-import { createWalletClient, http, WalletClient, keccak256, parseEther, zeroHash, encodeDeployData, createPublicClient, PublicClient, maxUint64, encodeFunctionData, decodeFunctionResult } from 'viem'
+import { createWalletClient, http, WalletClient, keccak256, parseEther, zeroHash, encodeDeployData, createPublicClient, PublicClient, maxUint64, encodeFunctionData } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
 import McvLaunchNFT from '../common/abi/McvLaunchNFT.js';
 import { EvmMintStage, WhitelistWithLimit } from '../types.js';
@@ -19,6 +19,18 @@ export class EvmMCV {
       transport: http(endpoint)
     })
   }
+
+    /**
+   * Create an AI-NFT collection
+   * @param name - The name of the collection
+   * @param symbol - The symbol of the collection
+   * @param uri - The URI of the collection
+   * @param uriSuffix - The URI suffix of the collection, eg. '.json'
+   * @param royaltyBps - The royalty basis points. It means 5% if set to 500.
+   * @param itemsCount - The number of items in the candy machine
+   * @param mintStages - The mint stages
+   * @returns The collection contract address
+   */
 
   async createAiNftCollection({
     name,
@@ -72,6 +84,15 @@ export class EvmMCV {
   }
 
   async createAiNft() { }
+
+  /**
+   * Mint an AI-NFT by user.
+   * @param contractAddress - The collection contract address.
+   * @param stageIndex - The index of the mint stage.
+   * @param merkleProof - The merkle proof. Required if the mint stage is for whitelist.
+   * @param quantity - The number of items you want to mint.
+   * @param mintLimit - The wallet mint limit,default 0.
+   */
 
   async mintAiNft({
     contractAddress,
