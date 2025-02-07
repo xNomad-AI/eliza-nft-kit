@@ -1,6 +1,6 @@
 {
   "name": "@xnomad/mcv",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": "",
   "main": "dist/index.js",
   "type": "module",
@@ -25,7 +25,8 @@
     "@solana/web3.js": "^1.98.0",
     "@web3-storage/w3up-client": "^17.1.1",
     "bs58": "^6.0.0",
-    "dotenv": "^16.4.7"
+    "dotenv": "^16.4.7",
+    "viem": "^2.22.17"
   },
   "devDependencies": {
     "ts-node": "^10.9.2"
