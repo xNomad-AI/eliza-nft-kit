@@ -132,6 +132,122 @@ await mcv.mintAiNft({
 });
 ```
 
+#### Create an AI-NFT collection on EVM
+```typescript
+
+
+import {
+    EvmMCV,
+    createAiNftMetadata,
+    CollectionInfo,
+    createAwsS3Uploader,
+    createWeb3StorageUploader,
+    AiAgentEngine,
+} from '@xnomad/mcv';
+
+// Your AI-NFT collection.
+const collectionInfo: CollectionInfo = {
+    name: "my collection",
+    description: "this is an AI-NFT collection",
+    image: "https://example.jpg",
+    attributes: [],
+    properties: {
+        files: [
+            {
+                uri: "https://example.jpg",
+                type: "image/jpg"
+            }
+        ],
+        category: 'image'
+    }
+};
+
+// Your AI agent characters corresponding to the NFTs
+// See https://elizaos.github.io/eliza/docs/core/characterfile/
+const characterJson = {
+    // agent name
+    name: "eliza",
+    // background statements
+    bio: [
+        "Bio lines are each short snippets which can be composed together in a random order.",
+    ],
+    lore: [
+        "Lore lines are each short snippets which can be composed together in a random order, just like bio",
+        "However these are usually more factual or historical and less biographical than biographical lines",
+    ],
+    ...
+  };
+
+// Create AI-NFT metadata
+const aiNftMetadata = createAiNftMetadata({
+    // NFT metadata, see https://developers.metaplex.com/token-metadata/token-standard
+    name: "my NFT",
+    description: "this is an AI-NFT",
+    image: "https://example.jpg",
+    attributes: [],
+    properties: {
+        files: [],
+        category: ''
+    }
+}, AiAgentEngine.ELIZA, characterJson);
+
+// create EvmMCV instance
+const mcv = new EvmMCV('PRIVATE_KET', 'ENDPOINT');
+
+// Upload AI-NFT metadata to S3
+const { baseUrl, nftUris } = await mcv.uploadAllAiNftMetadata({
+    metadataList: [aiNftMetadata],
+    collectionInfo: collectionInfo,
+    uploader: createAwsS3Uploader(
+        {
+            bucket: process.env.S3_BUCKET!,
+            accessKeyId: process.env.S3_ACCESS_KEY!,
+            secretAccessKey: process.env.S3_SECRET_KEY!,
+            region: process.env.S3_REGION!,
+        },
+        process.env.S3_BASE_URL!,
+        (filename) => `metadata/${filename}`,
+    ),
+});
+// Alternatively, you can upload to IPFS
+const { baseUrl, nftUris } = await mcv.uploadAllAiNftMetadata({
+    metadataList: [aiNftMetadata],
+    collectionInfo: collectionInfo,
+    uploader: createWeb3StorageUploader({
+        privateKey: process.env.WEB3_STORAGE_PRIVATE_KEY!,
+        proof: process.env.WEB3_STORAGE_PROOF!,
+    }),
+});
+
+// Create AI-NFT collection
+const result = await mcv.createAiNftCollection({
+    name: collectionInfo.name, // Collection name
+    symbol: '',
+    uri: baseUrl, // Collection metadata URI
+    uriSuffix: '.json', // Collection metadata URI suffix
+    royaltyBps: 100, // Royalty basis points, 100 = 1%
+    itemsCount: 3, // Total number of NFTs
+    mintStages: [
+        // Mint phase configuration
+        {
+            pricePerNFT: 0.1, // Price per NFT, eg. 0.1 = 0.1ETH
+            startDate: new Date(), // Start time
+            endDate: new Date(Date.now() + 1000 * 60 * 60 * 24 * 7), // End time
+            maxMintsPerWallet: 1 // Mint limit per user
+        }
+    ],
+});
+
+// User mint
+const mcv = new EvmMCV('PRIVATE_KET', 'ENDPOINT');
+await mcv.mintAiNft({
+    contractAddress: result, // collection address
+    stageIndex: 0, // mint stage index
+    merkleProof: [],
+    quantity: 1
+});
+```
+
 ## 📜 License
 
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
