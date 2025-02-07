@@ -82,7 +82,7 @@ contract McvLaunchNFT is ERC721A, Ownable, ReentrancyGuard, ERC2981 {
     }
 
     function supportsInterface(bytes4 interfaceId) public view virtual override(ERC721A, ERC2981) returns (bool) {
-        return super.supportsInterface(interfaceId);
+        return ERC721A.supportsInterface(interfaceId) || ERC2981.supportsInterface(interfaceId);
     }
 
     function sendNativeToken(address recipient, uint256 value) internal {
