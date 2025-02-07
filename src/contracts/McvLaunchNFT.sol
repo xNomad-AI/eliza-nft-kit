@@ -3,11 +3,12 @@ pragma solidity ^0.8.26;
 
 import "erc721a/contracts/ERC721A.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 import "@openzeppelin/contracts/token/common/ERC2981.sol";
 import {LibStorage} from "./libs/LibStorage.sol";
 
-contract McvLaunchNFT is ERC721A, Ownable, ERC2981 {
+contract McvLaunchNFT is ERC721A, Ownable, ReentrancyGuard, ERC2981 {
     LibStorage.LaunchpadStorage private launchpadStorage;
 
     using LibStorage for LibStorage.LaunchpadStorage;
@@ -39,7 +40,7 @@ contract McvLaunchNFT is ERC721A, Ownable, ERC2981 {
         uint64 quantity,
         uint64 maxQuantity,
         bytes32[] calldata proof
-    ) external payable {
+    ) external payable nonReentrant {
         (address mintFeeRecipient, uint256 totalMintFee) = launchpadStorage.checkStageMint(
             stageIndex,
             account,
@@ -70,6 +71,10 @@ contract McvLaunchNFT is ERC721A, Ownable, ERC2981 {
 
     function updateMintStages(LibStorage.MintStage[] memory newStages) external onlyOwner {
         launchpadStorage.updateMintStages(newStages);
+    }
+
+    function updateDefaultRoyalty(address _receiver, uint96 _feeNumerator) external onlyOwner {
+        _setDefaultRoyalty(_receiver, _feeNumerator);
     }
     
     function _startTokenId() internal view virtual override returns (uint256) {
