@@ -61,7 +61,7 @@ export class EvmMCV {
         this.walletClient.account!.address,
         itemsCount,
         this.walletClient.account!.address,
-        royaltyBps,
+        royaltyBps ?? 0,
         mintStages ? mintStages.map((mintStage) => ({
           startDate: Math.floor(mintStage.startDate.getTime() / 1000),
           endDate: mintStage.endDate ? Math.floor(mintStage.endDate.getTime() / 1000) : maxUint64,
