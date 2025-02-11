@@ -13,7 +13,7 @@ An out-of-box dev kit to launch your AI-NFT based on [Eliza](https://github.com/
 ## ⛓️ Supported Blockchain
 
 - Solana
-- EVM (Coming soon)
+- EVM
 
 ## 🌐 Quick Start
 
